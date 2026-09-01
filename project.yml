@@ -1,0 +1,40 @@
+name: CatPlayIOSRelay
+
+options:
+  bundleIdPrefix: com.dstmath.catplay
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
+
+targets:
+  CatPlayIOSRelay:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dstmath.catplay.iosrelay
+        PRODUCT_NAME: CatPlay MFi Relay
+        INFOPLIST_FILE: Config/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+schemes:
+  CatPlayIOSRelay:
+    build:
+      targets:
+        CatPlayIOSRelay: all
+    run:
+      config: Debug
+    archive:
+      config: Release

@@ -1,0 +1,7 @@
+.DS_Store
+DerivedData/
+build/
+CatPlayIOSRelay.xcodeproj/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
