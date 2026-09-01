@@ -1,0 +1,38 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.0",
+  "base_commit_sha": "be206f8f2f20a769cc3d991b7864fc16939751b9",
+  "prompts": {},
+  "commit_stats": {
+    "git_diff_added_lines": 12,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 12,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".github/workflows/ios-build.yml": {
+        "BYMC": [
+          "100-101",
+          "104-105",
+          "113",
+          "124"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "README.md": {
+        "BYMC": [
+          "86-91"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1788249821,
+  "requirement_id": ""
+}
