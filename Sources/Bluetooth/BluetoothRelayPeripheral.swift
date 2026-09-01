@@ -117,7 +117,9 @@ final class BluetoothRelayPeripheral: NSObject, CBPeripheralManagerDelegate {
             flushResponsePackets()
         } else if characteristic.uuid == Self.statusUUID {
             publishDiagnostic("stage=ble.subscribe status=ok channel=status")
-            _ = peripheral.updateValue(statusValue, for: characteristic, onSubscribedCentrals: [central])
+            if let statusCharacteristic {
+                _ = peripheral.updateValue(statusValue, for: statusCharacteristic, onSubscribedCentrals: [central])
+            }
         }
     }
 
