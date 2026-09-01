@@ -11,9 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  simulator-build:
+  unsigned-device-ipa:
     runs-on: macos-15
     timeout-minutes: 20
+    env:
+      DEVICE_BUILD_DIR: ${{ runner.temp }}/catplay-device-build
+      APP_BUNDLE_PATH: ${{ runner.temp }}/catplay-device-build/CatPlay MFi Relay.app
+      IPA_STAGING_DIR: ${{ runner.temp }}/catplay-ipa-staging
+      IPA_OUTPUT_DIR: ${{ runner.temp }}/catplay-ipa-output
+      BUILD_LOG_PATH: ${{ runner.temp }}/catplay-xcodebuild.log
     steps:
       - uses: actions/checkout@v4
 
@@ -26,23 +32,25 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build for iOS Simulator
+      - name: Build unsigned app for iPhone
         run: |
           set +e
           set -o pipefail
           xcodebuild \
             -project CatPlayIOSRelay.xcodeproj \
             -scheme CatPlayIOSRelay \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CONFIGURATION_BUILD_DIR="$DEVICE_BUILD_DIR" \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tee xcodebuild.log
+            CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee "$BUILD_LOG_PATH"
           build_status=${PIPESTATUS[0]}
           if [ "$build_status" -ne 0 ]; then
-            diagnostics=$(grep -E '(^|[[:space:]])(error:|fatal error:)|BUILD FAILED|The following build commands failed' xcodebuild.log | tail -n 80)
+            diagnostics=$(grep -E '(^|[[:space:]])(error:|fatal error:)|BUILD FAILED|The following build commands failed' "$BUILD_LOG_PATH" | tail -n 80)
             if [ -z "$diagnostics" ]; then
-              diagnostics=$(tail -n 80 xcodebuild.log)
+              diagnostics=$(tail -n 80 "$BUILD_LOG_PATH")
             fi
             {
               printf '### Xcode build diagnostics\n\n```text\n'
@@ -52,3 +60,70 @@ jobs:
             printf '%s\n' "$diagnostics" | sed 's/^/::error::/'
           fi
           exit "$build_status"
+
+      - name: Package and verify unsigned IPA
+        run: |
+          set -euo pipefail
+          if [ ! -d "$APP_BUNDLE_PATH" ]; then
+            printf '::error::Expected app bundle was not produced: %s\n' "$APP_BUNDLE_PATH"
+            exit 1
+          fi
+
+          bundle_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP_BUNDLE_PATH/Info.plist")
+          executable_path="$APP_BUNDLE_PATH/$bundle_executable"
+          if [ ! -f "$executable_path" ]; then
+            printf '::error::App executable is missing from the bundle\n'
+            exit 1
+          fi
+
+          architectures=$(xcrun lipo -archs "$executable_path")
+          case " $architectures " in
+            *" arm64 "*) ;;
+            *)
+              printf '::error::Expected arm64 device executable, got: %s\n' "$architectures"
+              exit 1
+              ;;
+          esac
+
+          if [ -e "$APP_BUNDLE_PATH/embedded.mobileprovision" ] || [ -d "$APP_BUNDLE_PATH/_CodeSignature" ]; then
+            printf '::error::Device build unexpectedly contains signing material\n'
+            exit 1
+          fi
+
+          mkdir -p "$IPA_STAGING_DIR/Payload" "$IPA_OUTPUT_DIR"
+          /usr/bin/ditto "$APP_BUNDLE_PATH" "$IPA_STAGING_DIR/Payload/CatPlay MFi Relay.app"
+          ipa_path="$IPA_OUTPUT_DIR/CatPlayIOSRelay-unsigned.ipa"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$IPA_STAGING_DIR/Payload" "$ipa_path"
+          /usr/bin/unzip -tqq "$ipa_path"
+          /usr/bin/shasum -a 256 "$ipa_path" | tee "$IPA_OUTPUT_DIR/SHA256SUMS.txt"
+
+          {
+            printf 'commit=%s\n' "$GITHUB_SHA"
+            printf 'configuration=Release\n'
+            printf 'sdk=iphoneos\n'
+            printf 'architectures=%s\n' "$architectures"
+            printf 'signed=false\n'
+            xcodebuild -version
+          } > "$IPA_OUTPUT_DIR/BUILD-INFO.txt"
+
+          ipa_size=$(stat -f '%z' "$ipa_path")
+          {
+            printf '### Unsigned iPhone IPA\n\n'
+            printf -- '- Artifact: `CatPlayIOSRelay-unsigned-%s`\n' "$GITHUB_SHA"
+            printf -- '- File: `CatPlayIOSRelay-unsigned.ipa`\n'
+            printf -- '- Architecture: `%s`\n' "$architectures"
+            printf -- '- Bytes: `%s`\n' "$ipa_size"
+            printf -- '- Signing: none; sign with Sideloadly before installation\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: CatPlayIOSRelay-unsigned-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/catplay-ipa-output/CatPlayIOSRelay-unsigned.ipa
+            ${{ runner.temp }}/catplay-ipa-output/SHA256SUMS.txt
+            ${{ runner.temp }}/catplay-ipa-output/BUILD-INFO.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

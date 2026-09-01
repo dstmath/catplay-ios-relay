@@ -29,7 +29,8 @@ audio, touch, microphone, GNSS, iAP2, and NCM remain on the direct USB path.
 - one TCP connection per CMFI request to a configurable Pi endpoint;
 - absolute exchange timeout and one in-flight request;
 - payload-redacted diagnostic events;
-- GitHub Actions build on a macOS runner without code signing.
+- GitHub Actions arm64 iPhone build and unsigned IPA artifact without code
+  signing material.
 
 The app intentionally declares no Bluetooth background mode. The user must keep
 it open. Moving it to the background stops the relay and prevents stale
@@ -70,6 +71,35 @@ For a physical iPhone, open the generated project in Xcode, select a personal or
 organization Development Team, choose a unique Bundle ID when necessary, and
 run on the device. Signing certificates and provisioning profiles must remain
 outside Git.
+
+## Minimal installation without Xcode
+
+The `iOS build` GitHub Actions workflow also produces an unsigned arm64 device
+package. Open the latest successful workflow run, download the artifact named
+`CatPlayIOSRelay-unsigned-<commit>`, and extract the outer artifact ZIP. It
+contains:
+
+- `CatPlayIOSRelay-unsigned.ipa`;
+- `SHA256SUMS.txt` for download verification;
+- `BUILD-INFO.txt` with the source commit, SDK, architecture, and signing state.
+
+The IPA deliberately contains neither `_CodeSignature` nor
+`embedded.mobileprovision`, so iOS will reject a direct installation. On a Mac
+with Sideloadly:
+
+1. connect the iPhone over USB and select it in Sideloadly;
+2. drag `CatPlayIOSRelay-unsigned.ipa` into Sideloadly;
+3. sign with a dedicated test Apple ID and install;
+4. enable **Settings → Privacy & Security → Developer Mode** if prompted;
+5. trust the developer identity under **Settings → General → VPN & Device
+   Management** if prompted;
+6. launch the app once, grant Bluetooth and Local Network access, then reconnect
+   the iPhone to the Android OTG port for the CarPlay test.
+
+Free personal signing normally expires after seven days. Re-sign the original
+unsigned IPA when necessary. Do not commit, upload, or share the signed output,
+Apple credentials, provisioning profiles, or device identifiers. This workflow
+does not receive or store any Apple account credential.
 
 ## Protocol
 
