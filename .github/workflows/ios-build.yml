@@ -90,6 +90,10 @@ jobs:
             printf '::error::Device build unexpectedly contains signing material\n'
             exit 1
           fi
+          if /usr/bin/codesign -d "$APP_BUNDLE_PATH" >/dev/null 2>&1; then
+            printf '::error::Device executable unexpectedly contains a code signature\n'
+            exit 1
+          fi
 
           mkdir -p "$IPA_STAGING_DIR/Payload" "$IPA_OUTPUT_DIR"
           /usr/bin/ditto "$APP_BUNDLE_PATH" "$IPA_STAGING_DIR/Payload/CatPlay MFi Relay.app"
