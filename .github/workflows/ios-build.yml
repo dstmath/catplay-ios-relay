@@ -28,6 +28,7 @@ jobs:
 
       - name: Build for iOS Simulator
         run: |
+          set +e
           set -o pipefail
           xcodebuild \
             -project CatPlayIOSRelay.xcodeproj \
@@ -36,4 +37,18 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee xcodebuild.log
+          build_status=${PIPESTATUS[0]}
+          if [ "$build_status" -ne 0 ]; then
+            diagnostics=$(grep -E '(^|[[:space:]])(error:|fatal error:)|BUILD FAILED|The following build commands failed' xcodebuild.log | tail -n 80)
+            if [ -z "$diagnostics" ]; then
+              diagnostics=$(tail -n 80 xcodebuild.log)
+            fi
+            {
+              printf '### Xcode build diagnostics\n\n```text\n'
+              printf '%s\n' "$diagnostics"
+              printf '```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' "$diagnostics" | sed 's/^/::error::/'
+          fi
+          exit "$build_status"
