@@ -97,10 +97,12 @@ jobs:
 
           mkdir -p "$IPA_STAGING_DIR/Payload" "$IPA_OUTPUT_DIR"
           /usr/bin/ditto "$APP_BUNDLE_PATH" "$IPA_STAGING_DIR/Payload/CatPlay MFi Relay.app"
-          ipa_path="$IPA_OUTPUT_DIR/CatPlayIOSRelay-unsigned.ipa"
+          ipa_filename="CatPlayIOSRelay-unsigned.ipa"
+          ipa_path="$IPA_OUTPUT_DIR/$ipa_filename"
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$IPA_STAGING_DIR/Payload" "$ipa_path"
           /usr/bin/unzip -tqq "$ipa_path"
-          /usr/bin/shasum -a 256 "$ipa_path" | tee "$IPA_OUTPUT_DIR/SHA256SUMS.txt"
+          ipa_sha256=$(/usr/bin/shasum -a 256 "$ipa_path" | awk '{print $1}')
+          printf '%s  %s\n' "$ipa_sha256" "$ipa_filename" | tee "$IPA_OUTPUT_DIR/SHA256SUMS.txt"
 
           {
             printf 'commit=%s\n' "$GITHUB_SHA"
@@ -108,6 +110,7 @@ jobs:
             printf 'sdk=iphoneos\n'
             printf 'architectures=%s\n' "$architectures"
             printf 'signed=false\n'
+            printf 'ipa_sha256=%s\n' "$ipa_sha256"
             xcodebuild -version
           } > "$IPA_OUTPUT_DIR/BUILD-INFO.txt"
 
@@ -118,6 +121,7 @@ jobs:
             printf -- '- File: `CatPlayIOSRelay-unsigned.ipa`\n'
             printf -- '- Architecture: `%s`\n' "$architectures"
             printf -- '- Bytes: `%s`\n' "$ipa_size"
+            printf -- '- SHA-256: `%s`\n' "$ipa_sha256"
             printf -- '- Signing: none; sign with Sideloadly before installation\n'
           } >> "$GITHUB_STEP_SUMMARY"
 

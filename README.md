@@ -83,6 +83,12 @@ contains:
 - `SHA256SUMS.txt` for download verification;
 - `BUILD-INFO.txt` with the source commit, SDK, architecture, and signing state.
 
+After extracting the artifact, verify it before signing:
+
+~~~bash
+shasum -a 256 -c SHA256SUMS.txt
+~~~
+
 The IPA deliberately contains neither `_CodeSignature` nor
 `embedded.mobileprovision`, so iOS will reject a direct installation. On a Mac
 with Sideloadly:
