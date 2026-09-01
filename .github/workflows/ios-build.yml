@@ -14,12 +14,6 @@ jobs:
   unsigned-device-ipa:
     runs-on: macos-15
     timeout-minutes: 20
-    env:
-      DEVICE_BUILD_DIR: ${{ runner.temp }}/catplay-device-build
-      APP_BUNDLE_PATH: ${{ runner.temp }}/catplay-device-build/CatPlay MFi Relay.app
-      IPA_STAGING_DIR: ${{ runner.temp }}/catplay-ipa-staging
-      IPA_OUTPUT_DIR: ${{ runner.temp }}/catplay-ipa-output
-      BUILD_LOG_PATH: ${{ runner.temp }}/catplay-xcodebuild.log
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +27,9 @@ jobs:
         run: xcodegen generate
 
       - name: Build unsigned app for iPhone
+        env:
+          DEVICE_BUILD_DIR: ${{ runner.temp }}/catplay-device-build
+          BUILD_LOG_PATH: ${{ runner.temp }}/catplay-xcodebuild.log
         run: |
           set +e
           set -o pipefail
@@ -62,6 +59,10 @@ jobs:
           exit "$build_status"
 
       - name: Package and verify unsigned IPA
+        env:
+          APP_BUNDLE_PATH: ${{ runner.temp }}/catplay-device-build/CatPlay MFi Relay.app
+          IPA_STAGING_DIR: ${{ runner.temp }}/catplay-ipa-staging
+          IPA_OUTPUT_DIR: ${{ runner.temp }}/catplay-ipa-output
         run: |
           set -euo pipefail
           if [ ! -d "$APP_BUNDLE_PATH" ]; then
